@@ -19,7 +19,9 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public static string ip = "irc.chat.twitch.tv";
         public static int port = 6667;
-        public static string password = "oauth:";
+        public static string iniPath = "./.twitch-config.ini";
+        public static JSONFile iniConfig = new JSONFile(iniPath);
+        public static string password;
         public static string botUsername = "pinta_bot";
 
         public CelesteTwitchIntegrationModule()
@@ -28,6 +30,7 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 #if DEBUG
             // debug builds use verbose logging
             Logger.SetLogLevel(nameof(CelesteTwitchIntegrationModule), LogLevel.Verbose);
+            
 #else
             // release builds use info logging to reduce spam in log files
             Logger.SetLogLevel(nameof(CelesteTwitchIntegrationModule), LogLevel.Info);
@@ -37,6 +40,8 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         public override void Load()
         {
             typeof(CelesteTwitchIntegrationExports).ModInterop(); // TODO: delete this line if you do not need to export any functions
+
+            password = iniConfig.Get("OAUTH");
 
             // TODO: apply any hooks that should always be active
         }
