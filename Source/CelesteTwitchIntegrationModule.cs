@@ -7,7 +7,8 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Drawing;
 using System.Linq;
-using Microsoft.Xna.Framework;
+using Celeste.Mod.Hyperline;
+using Celeste.Mod.Hyperline.Triggers;
 
 namespace Celeste.Mod.CelesteTwitchIntegration
 {
@@ -36,6 +37,9 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         public static string botUsername;
         public static string twitchChannelName;
 
+        public static int hairLength = 1;
+        public static int hairSpeed = 1;
+
         public static Dictionary<string, TwitchCommand> commands = new Dictionary<string, TwitchCommand>();
 
         public CelesteTwitchIntegrationModule()
@@ -59,9 +63,9 @@ namespace Celeste.Mod.CelesteTwitchIntegration
             botUsername = iniConfig.Get("BOT_NAME");
             twitchChannelName = iniConfig.Get("CHANNEL_NAME");
 
-            commands.Add("haircolor", new ChangeHairColorCommand("haircolor"));
-            commands.Add("hairspeed", new ChangeHairSpeedCommand("hairspeed"));
-            commands.Add("hairlength", new ChangeHairLengthCommand("hairlength"));
+            commands.Add("color", new ChangeHairColorCommand("color"));
+            commands.Add("speed", new ChangeHairSpeedCommand("speed"));
+            commands.Add("length", new ChangeHairLengthCommand("length"));
 
             tcpClient = new TcpClient();
             tcpClient.Connect(ip, port);
@@ -114,6 +118,19 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         {
             // TODO: unapply any hooks applied in Load()
         }
+
+
+        public static HSVColor ColorToHSV(Color color)
+        {
+            int max = Math.Max(color.R, Math.Max(color.G, color.B));
+            int min = Math.Min(color.R, Math.Min(color.G, color.B));
+
+            float hue = color.GetHue();
+            float saturation = (max == 0) ? 0 : 1f - (1f * min / max);
+            float value = max / 255f;
+
+            return new HSVColor(hue, saturation, value);
+        }
     }
 
     public abstract class TwitchCommand
@@ -136,13 +153,14 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public override void ProcessOptions(string[] args)
         {
-            if(args.Length == 2)
+            if(args.Length == 1)
             {
-                if (int.TryParse(args[0], out int slot))
+                if (int.TryParse(args[0], out int length))
                 {
-                    if (int.TryParse(args[1], out int length))
+                    for(int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
-                        Hyperline.Hyperline.Instance.UI.SetHairLength(slot, length);
+                        Hyperline.Hyperline.Instance.UI.SetHairLength(i, length);
+                        CelesteTwitchIntegrationModule.hairLength = length;
                     }
                 }
             }
@@ -156,13 +174,14 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public override void ProcessOptions(string[] args)
         {
-            if (args.Length == 2)
+            if (args.Length == 1)
             {
-                if (int.TryParse(args[0], out int slot))
+                if (int.TryParse(args[0], out int speed))
                 {
-                    if (int.TryParse(args[1], out int speed))
+                    for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
-                        Hyperline.Hyperline.Instance.UI.SetHairSpeed(slot, speed);
+                        Hyperline.Hyperline.Instance.UI.SetHairSpeed(i, speed);
+                        CelesteTwitchIntegrationModule.hairSpeed = speed;
                     }
                 }
             }
@@ -176,13 +195,18 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public override void ProcessOptions(string[] args)
         {
-            if (args.Length == 2)
+            if (args.Length == 1)
             {
-                if (int.TryParse(args[0], out int slot))
+                try
                 {
-                    System.Drawing.Color ogColor = System.Drawing.Color.FromName(args[1]);
-                    Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color(ogColor.R, ogColor.G, ogColor.B);
-                    Hyperline.Hyperline.Instance.lastColor = color;
+                    Color ogColor = Color.FromName(args[0]);
+                    HSVColor hsvcolor = CelesteTwitchIntegrationModule.ColorToHSV(ogColor);
+
+                    Hyperline.Hyperline.Instance.triggerManager.SetTrigger(new SolidHair(hsvcolor), 1, CelesteTwitchIntegrationModule.hairLength, CelesteTwitchIntegrationModule.hairSpeed);
+                }
+                catch (Exception e)
+                {
+                        Console.WriteLine("HAIR COLOR SWITCH FAILED WITH ERROR:\n" + e.ToString());
                 }
             }
         }
