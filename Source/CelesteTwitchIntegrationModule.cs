@@ -7,6 +7,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Drawing;
 using System.Linq;
+using Microsoft.Xna.Framework;
 
 namespace Celeste.Mod.CelesteTwitchIntegration
 {
@@ -32,8 +33,8 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         public static string iniPath = "./.twitch-config.ini";
         public static JSONFile iniConfig = new JSONFile(iniPath);
         public static string password;
-        public static string botUsername = "pinta_bot";
-        public static string twitchChannelName = "pintalive";
+        public static string botUsername;
+        public static string twitchChannelName;
 
         public static Dictionary<string, TwitchCommand> commands = new Dictionary<string, TwitchCommand>();
 
@@ -52,19 +53,18 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public override void Load()
         {
-
             typeof(CelesteTwitchIntegrationExports).ModInterop(); // TODO: delete this line if you do not need to export any functions
-            Console.WriteLine("TEST LOG");
 
+            password = iniConfig.Get("OAUTH");
+            botUsername = iniConfig.Get("BOT_NAME");
+            twitchChannelName = iniConfig.Get("CHANNEL_NAME");
 
             commands.Add("haircolor", new ChangeHairColorCommand("haircolor"));
             commands.Add("hairspeed", new ChangeHairSpeedCommand("hairspeed"));
             commands.Add("hairlength", new ChangeHairLengthCommand("hairlength"));
 
-            password = iniConfig.Get("OAUTH");
             tcpClient = new TcpClient();
             tcpClient.Connect(ip, port);
-
 
             streamReader = new StreamReader(tcpClient.GetStream());
             streamWriter = new StreamWriter(tcpClient.GetStream()) { NewLine = "\r\n", AutoFlush = true };
@@ -180,8 +180,9 @@ namespace Celeste.Mod.CelesteTwitchIntegration
             {
                 if (int.TryParse(args[0], out int slot))
                 {
-                    Color color = Color.FromName(args[1]);
-
+                    System.Drawing.Color ogColor = System.Drawing.Color.FromName(args[1]);
+                    Microsoft.Xna.Framework.Color color = new Microsoft.Xna.Framework.Color(ogColor.R, ogColor.G, ogColor.B);
+                    Hyperline.Hyperline.Instance.lastColor = color;
                 }
             }
         }
