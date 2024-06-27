@@ -27,7 +27,7 @@
         <Reference Include="$(CelestePrefix)\MMHOOK_Celeste.dll" Private="false" />
         <Reference Include="$(CelestePrefix)\FNA.dll" Private="false" />
         <Reference Include="Hyperline">
-          <HintPath>..\.dependencies\Hyperline-0.2.2\Hyperline-nstrip.dll</HintPath>
+          <HintPath>..\.dependencies\Hyperline-0.2.2\Hyperline.dll</HintPath>
         </Reference>
     </ItemGroup>
 

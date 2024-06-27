@@ -1,9 +1,12 @@
-﻿using Celeste.Mod.Hyperline;
+﻿//using Celeste.Mod.Hyperline;
 using MonoMod.ModInterop;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
+using System.Drawing;
+using System.Linq;
 
 namespace Celeste.Mod.CelesteTwitchIntegration
 {
@@ -32,6 +35,8 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         public static string botUsername = "pinta_bot";
         public static string twitchChannelName = "pintalive";
 
+        public static Dictionary<string, TwitchCommand> commands = new Dictionary<string, TwitchCommand>();
+
         public CelesteTwitchIntegrationModule()
         {
             Instance = this;
@@ -50,6 +55,11 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
             typeof(CelesteTwitchIntegrationExports).ModInterop(); // TODO: delete this line if you do not need to export any functions
             Console.WriteLine("TEST LOG");
+
+
+            commands.Add("haircolor", new ChangeHairColorCommand("haircolor"));
+            commands.Add("hairspeed", new ChangeHairSpeedCommand("hairspeed"));
+            commands.Add("hairlength", new ChangeHairLengthCommand("hairlength"));
 
             password = iniConfig.Get("OAUTH");
             tcpClient = new TcpClient();
@@ -88,23 +98,92 @@ namespace Celeste.Mod.CelesteTwitchIntegration
                 if (split.Length > 2)
                 {
                     Console.WriteLine(split[2]);
+                    string[] command = split[2].Split(" ");
 
-                    if (split[2].StartsWith("hair"))
+                    if (commands.ContainsKey(command[0]))
                     {
-                        string[] options = split[2].Split(" ");
-                        if (options[1] == "yellow")
-                        {
-                            Hyperline.Hyperline.Instance.UI.SetHairLength(10, 10);
-                            
-                        }
+                        commands[command[0]].ProcessOptions(command.Skip(1).ToArray());
                     }
                 }
             }
         }
 
+
+
         public override void Unload()
         {
             // TODO: unapply any hooks applied in Load()
+        }
+    }
+
+    public abstract class TwitchCommand
+    {
+        public string name;
+
+        public TwitchCommand(string name)
+        {
+            this.name = name;
+        }
+
+
+        public abstract void ProcessOptions(string[] args);
+    }
+
+    public class ChangeHairLengthCommand : TwitchCommand
+    {
+
+        public ChangeHairLengthCommand(string name) : base(name) { }
+
+        public override void ProcessOptions(string[] args)
+        {
+            if(args.Length == 2)
+            {
+                if (int.TryParse(args[0], out int slot))
+                {
+                    if (int.TryParse(args[1], out int length))
+                    {
+                        Hyperline.Hyperline.Instance.UI.SetHairLength(slot, length);
+                    }
+                }
+            }
+        }
+    }
+
+    public class ChangeHairSpeedCommand : TwitchCommand
+    {
+
+        public ChangeHairSpeedCommand(string name) : base(name) { }
+
+        public override void ProcessOptions(string[] args)
+        {
+            if (args.Length == 2)
+            {
+                if (int.TryParse(args[0], out int slot))
+                {
+                    if (int.TryParse(args[1], out int speed))
+                    {
+                        Hyperline.Hyperline.Instance.UI.SetHairSpeed(slot, speed);
+                    }
+                }
+            }
+        }
+    }
+
+    public class ChangeHairColorCommand : TwitchCommand
+    {
+
+        public ChangeHairColorCommand(string name) : base(name) { }
+
+        public override void ProcessOptions(string[] args)
+        {
+            if (args.Length == 2)
+            {
+                if (int.TryParse(args[0], out int slot))
+                {
+                    Color color = Color.FromName(args[1]);
+
+                }
+            }
         }
     }
 }
