@@ -9,21 +9,22 @@ using System.Drawing;
 using System.Linq;
 using Celeste.Mod.Hyperline;
 using Celeste.Mod.Hyperline.Triggers;
+using System.Numerics;
 
-namespace Celeste.Mod.CelesteTwitchIntegration
+namespace Celeste.Mod.PintaTwitchIntegration
 {
-    public class CelesteTwitchIntegrationModule : EverestModule
+    public class PintaTwitchIntModule : EverestModule
     {
-        public static CelesteTwitchIntegrationModule Instance { get; private set; }
+        public static PintaTwitchIntModule Instance { get; private set; }
 
-        public override Type SettingsType => typeof(CelesteTwitchIntegrationModuleSettings);
-        public static CelesteTwitchIntegrationModuleSettings Settings => (CelesteTwitchIntegrationModuleSettings)Instance._Settings;
+        public override Type SettingsType => typeof(PintaTwitchIntModuleSettings);
+        public static PintaTwitchIntModuleSettings Settings => (PintaTwitchIntModuleSettings)Instance._Settings;
 
-        public override Type SessionType => typeof(CelesteTwitchIntegrationModuleSession);
-        public static CelesteTwitchIntegrationModuleSession Session => (CelesteTwitchIntegrationModuleSession)Instance._Session;
+        public override Type SessionType => typeof(PintaTwitchIntModuleSession);
+        public static PintaTwitchIntModuleSession Session => (PintaTwitchIntModuleSession)Instance._Session;
 
-        public override Type SaveDataType => typeof(CelesteTwitchIntegrationModuleSaveData);
-        public static CelesteTwitchIntegrationModuleSaveData SaveData => (CelesteTwitchIntegrationModuleSaveData)Instance._SaveData;
+        public override Type SaveDataType => typeof(PintaTwitchIntModuleSaveData);
+        public static PintaTwitchIntModuleSaveData SaveData => (PintaTwitchIntModuleSaveData)Instance._SaveData;
 
         static TcpClient tcpClient = new TcpClient();
         static StreamReader streamReader;
@@ -37,17 +38,16 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         public static string botUsername;
         public static string twitchChannelName;
 
-        public static int hairLength = 1;
-        public static int hairSpeed = 1;
+        public static HairProperties hair;
 
         public static Dictionary<string, TwitchCommand> commands = new Dictionary<string, TwitchCommand>();
 
-        public CelesteTwitchIntegrationModule()
+        public PintaTwitchIntModule()
         {
             Instance = this;
 #if DEBUG
             // debug builds use verbose logging
-            Logger.SetLogLevel(nameof(CelesteTwitchIntegrationModule), LogLevel.Verbose);
+            Logger.SetLogLevel(nameof(PintaTwitchIntModule), LogLevel.Verbose);
 
 #else
             // release builds use info logging to reduce spam in log files
@@ -59,13 +59,16 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         {
             typeof(CelesteTwitchIntegrationExports).ModInterop(); // TODO: delete this line if you do not need to export any functions
 
+            hair = new HairProperties();
+            commands.Add("help", new HelpCommand("help"));
+            commands.Add("color", new ChangeHairColorCommand("color"));
+            commands.Add("speed", new ChangeHairSpeedCommand("speed"));
+            commands.Add("length", new ChangeHairLengthCommand("length"));
+
             password = iniConfig.Get("OAUTH");
             botUsername = iniConfig.Get("BOT_NAME");
             twitchChannelName = iniConfig.Get("CHANNEL_NAME");
 
-            commands.Add("color", new ChangeHairColorCommand("color"));
-            commands.Add("speed", new ChangeHairSpeedCommand("speed"));
-            commands.Add("length", new ChangeHairLengthCommand("length"));
 
             tcpClient = new TcpClient();
             tcpClient.Connect(ip, port);
@@ -76,6 +79,7 @@ namespace Celeste.Mod.CelesteTwitchIntegration
             streamWriter.WriteLine($"PASS {password}");
             streamWriter.WriteLine($"NICK {botUsername}");
             streamWriter.WriteLine($"JOIN #{twitchChannelName}");
+            streamWriter.WriteLine($"CAP REQ :twitch.tv/commands twitch.tv/tags");
             // TODO: apply any hooks that should always be active
 
             ReadTwitchChat();
@@ -90,15 +94,26 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         {
             streamWriter.WriteLine($"PRIVMSG #{twitchChannelName} :{message}");
         }
+        public static void SendTwitchMessage(string messageID, string message)
+        {
+            streamWriter.WriteLine($"@reply-parent-msg-id={messageID} PRIVMSG #{twitchChannelName} :{message}");
+        }
 
         public async void ReadTwitchChat()
         {
             while (true)
             {
-                //:pintalive!pintalive@pintalive.tmi.twitch.tv PRIVMSG #pintalive :rah
-
                 string line = await streamReader.ReadLineAsync();
+                Console.WriteLine(line);
                 string[] split = line.Split(':');
+                string messageID = "";
+                try
+                {
+                    messageID = line.Split(";id=")[1].Split(";")[0];
+                }
+                catch {}
+
+
                 if (split.Length > 2)
                 {
                     Console.WriteLine(split[2]);
@@ -106,7 +121,7 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
                     if (commands.ContainsKey(command[0]))
                     {
-                        commands[command[0]].ProcessOptions(command.Skip(1).ToArray());
+                        commands[command[0]].ProcessOptions(messageID, command.Skip(1).ToArray());
                     }
                 }
             }
@@ -143,7 +158,23 @@ namespace Celeste.Mod.CelesteTwitchIntegration
         }
 
 
-        public abstract void ProcessOptions(string[] args);
+        public virtual void ProcessOptions(string user, string[] args)
+        {
+            Console.WriteLine($"COMMAND {name} by {user}");
+        }
+    }
+
+    public class HelpCommand : TwitchCommand
+    {
+        string text = "'length <number>' to change hair length.    'speed <number>' to change hair speed.    'color <color>' to change hair color";
+
+        public HelpCommand(string name) : base(name) { }
+
+        public override void ProcessOptions(string user, string[] args)
+        {
+            base.ProcessOptions(user, args);
+            PintaTwitchIntModule.SendTwitchMessage(user, text);
+        }
     }
 
     public class ChangeHairLengthCommand : TwitchCommand
@@ -151,16 +182,17 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
         public ChangeHairLengthCommand(string name) : base(name) { }
 
-        public override void ProcessOptions(string[] args)
+        public override void ProcessOptions(string user, string[] args)
         {
-            if(args.Length == 1)
+            base.ProcessOptions(user, args);
+            if (args.Length == 1)
             {
                 if (int.TryParse(args[0], out int length))
                 {
                     for(int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
                         Hyperline.Hyperline.Instance.UI.SetHairLength(i, length);
-                        CelesteTwitchIntegrationModule.hairLength = length;
+                        PintaTwitchIntModule.hair.length = length;
                     }
                 }
             }
@@ -169,11 +201,11 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
     public class ChangeHairSpeedCommand : TwitchCommand
     {
-
         public ChangeHairSpeedCommand(string name) : base(name) { }
 
-        public override void ProcessOptions(string[] args)
+        public override void ProcessOptions(string user, string[] args)
         {
+            base.ProcessOptions(user, args);
             if (args.Length == 1)
             {
                 if (int.TryParse(args[0], out int speed))
@@ -181,7 +213,7 @@ namespace Celeste.Mod.CelesteTwitchIntegration
                     for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
                         Hyperline.Hyperline.Instance.UI.SetHairSpeed(i, speed);
-                        CelesteTwitchIntegrationModule.hairSpeed = speed;
+                        PintaTwitchIntModule.hair.speed = speed;
                     }
                 }
             }
@@ -190,24 +222,61 @@ namespace Celeste.Mod.CelesteTwitchIntegration
 
     public class ChangeHairColorCommand : TwitchCommand
     {
-
         public ChangeHairColorCommand(string name) : base(name) { }
 
-        public override void ProcessOptions(string[] args)
+        public override void ProcessOptions(string user, string[] args)
         {
+            base.ProcessOptions(user, args);
             if (args.Length == 1)
             {
                 try
                 {
                     Color ogColor = Color.FromName(args[0]);
-                    HSVColor hsvcolor = CelesteTwitchIntegrationModule.ColorToHSV(ogColor);
+                    HSVColor hsvcolor = PintaTwitchIntModule.ColorToHSV(ogColor);
 
-                    Hyperline.Hyperline.Instance.triggerManager.SetTrigger(new SolidHair(hsvcolor), 1, CelesteTwitchIntegrationModule.hairLength, CelesteTwitchIntegrationModule.hairSpeed);
+                    PintaTwitchIntModule.hair.SetType(new SolidHair(hsvcolor));
                 }
                 catch (Exception e)
                 {
                         Console.WriteLine("HAIR COLOR SWITCH FAILED WITH ERROR:\n" + e.ToString());
                 }
+            }
+        }
+    }
+
+    public class HairProperties
+    {
+        public IHairType hairType;
+        public int dashCount;
+        public int length;
+        public int speed;
+        // 0 71 67
+        public HairProperties()
+        {
+            hairType = new SolidHair(new HSVColor(0, 71, 67));
+            length = 4;
+            speed = 10;
+        }
+
+        public void SetType(IHairType hairType)
+        {
+            this.hairType = hairType;
+            Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, 1, length, speed);
+        }
+        public void SetLength(int length)
+        {
+            this.length = length;
+            for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
+            {
+                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, i, length, speed);
+            }
+        }
+        public void SetSpeed(int speed)
+        {
+            this.speed = speed;
+            for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
+            {
+                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, i, length, speed);
             }
         }
     }

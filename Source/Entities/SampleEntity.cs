@@ -2,7 +2,7 @@ using Celeste.Mod.Entities;
 using Microsoft.Xna.Framework;
 using Monocle;
 
-namespace Celeste.Mod.CelesteTwitchIntegration.Entities
+namespace Celeste.Mod.PintaTwitchIntegration.Entities
 {
     [CustomEntity("CelesteTwitchIntegration/SampleEntity")]
     public class SampleEntity : Entity

@@ -1,7 +1,7 @@
 using Celeste.Mod.Entities;
 using Microsoft.Xna.Framework;
 
-namespace Celeste.Mod.CelesteTwitchIntegration.Entities
+namespace Celeste.Mod.PintaTwitchIntegration.Entities
 {
     [CustomEntity("CelesteTwitchIntegration/SampleActor")]
     public class SampleActor : Actor

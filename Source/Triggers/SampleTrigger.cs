@@ -1,7 +1,7 @@
 using Celeste.Mod.Entities;
 using Microsoft.Xna.Framework;
 
-namespace Celeste.Mod.CelesteTwitchIntegration.Triggers
+namespace Celeste.Mod.PintaTwitchIntegration.Triggers
 {
     [CustomEntity("CelesteTwitchIntegration/SampleTrigger")]
     public class SampleTrigger : Trigger
