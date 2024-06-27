@@ -4,3 +4,5 @@
   Dependencies:
     - Name: EverestCore
       Version: 1.4673.0
+    - Name: Hairline
+      Version: 0.2.4

@@ -356,3 +356,4 @@ MigrationBackup/
 .idea
 
 /Source/config.ini
+/.dependencies
