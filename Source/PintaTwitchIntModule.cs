@@ -289,21 +289,22 @@ namespace Celeste.Mod.PintaTwitchIntegration
 
     public class HairProperties
     {
-        public IHairType hairType;
         public int dashCount;
         public int length;
         public int speed;
         // 0 71 67
         public HairProperties()
         {
-            hairType = new SolidHair(new HSVColor(0, 71, 67));
             length = 4;
             speed = 10;
+
+            SetHair(new SolidHair().CreateNew(0), 0);
+            SetHair(new SolidHair().CreateNew(1), 1);
+            SetHair(new SolidHair().CreateNew(2), 2);
         }
 
         public void SetType(IHairType hairType)
         {
-            this.hairType = hairType;
             Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, 1, length, speed);
         }
         public void SetLength(int length)
@@ -321,6 +322,16 @@ namespace Celeste.Mod.PintaTwitchIntegration
             {
                 Hyperline.Hyperline.Instance.triggerManager.SetTrigger(Hyperline.Hyperline.Instance.triggerManager.GetHair(i), i, length, speed);
             }
+        }
+
+        void SetHair(IHairType hairType, int slot)
+        {
+            Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, slot, length, speed);
+        }
+
+        public IHairType GetHair(int slot)
+        {
+            return Hyperline.Hyperline.Instance.triggerManager.GetHair(slot);
         }
     }
 }
