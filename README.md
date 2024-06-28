@@ -3,10 +3,11 @@ A mod for Celeste that, when the game starts, starts a Twitch bot and allows cha
 
 ## Twitch Chat Commands
 These are the commands to use in Twitch chat for this bot:
-- help			Gives descriptions of the following commands
-- length <amount>	Changes the hair length to the specified number
-- speed <amount>	Changes the hair speed to the specified number
-- color <color name>	Changes the hair color to the specified color. Available colors are the ones specified here: [https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.brushes?view=windowsdesktop-8.0]
+
+- help&ensp; Gives descriptions of the following commands
+- length \<amount\>&ensp; Changes the hair length to the specified number
+- speed \<amount\>&ensp; Changes the hair speed to the specified number
+- color \<color name\>&ensp; Changes the hair color to the specified color. Available colors are the ones specified here: [https://learn.microsoft.com/en-us/dotnet/api/system.windows.media.brushes?view=windowsdesktop-8.0]
 
 ## How to use the bot:
 1. Make a file inside the same place your Celeste.exe is titled :
