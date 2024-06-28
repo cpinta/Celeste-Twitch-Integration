@@ -42,6 +42,12 @@ namespace Celeste.Mod.PintaTwitchIntegration
 
         public static Dictionary<string, TwitchCommand> commands = new Dictionary<string, TwitchCommand>();
 
+        public static int errorCount = 0;
+        public static bool botRunning = false;
+        public static bool restartingBot = false;
+
+        public static int MAX_HAIR_LENGTH = 10000;
+
         public PintaTwitchIntModule()
         {
             Instance = this;
@@ -69,6 +75,15 @@ namespace Celeste.Mod.PintaTwitchIntegration
             botUsername = iniConfig.Get("BOT_NAME");
             twitchChannelName = iniConfig.Get("CHANNEL_NAME");
 
+            StartBot();
+
+            ReadTwitchChat();
+        }
+
+        public static void StartBot()
+        {
+            restartingBot = false;
+            errorCount = 0;
 
             tcpClient = new TcpClient();
             tcpClient.Connect(ip, port);
@@ -80,9 +95,6 @@ namespace Celeste.Mod.PintaTwitchIntegration
             streamWriter.WriteLine($"NICK {botUsername}");
             streamWriter.WriteLine($"JOIN #{twitchChannelName}");
             streamWriter.WriteLine($"CAP REQ :twitch.tv/commands twitch.tv/tags");
-            // TODO: apply any hooks that should always be active
-
-            ReadTwitchChat();
         }
 
         public static void GamePausedMessage(Level level, int startIndex, bool minimal, bool quickReset)
@@ -101,29 +113,58 @@ namespace Celeste.Mod.PintaTwitchIntegration
 
         public async void ReadTwitchChat()
         {
-            while (true)
+            botRunning = true;
+            while (botRunning)
             {
-                string line = await streamReader.ReadLineAsync();
-                Console.WriteLine(line);
-                string[] split = line.Split(':');
-                string messageID = "";
                 try
                 {
-                    messageID = line.Split(";id=")[1].Split(";")[0];
-                }
-                catch {}
-
-
-                if (split.Length > 2)
-                {
-                    Console.WriteLine(split[2]);
-                    string[] command = split[2].Split(" ");
-
-                    if (commands.ContainsKey(command[0]))
+                    string line = await streamReader.ReadLineAsync();
+                    Console.WriteLine(line);
+                    if(line.Trim() != "")
                     {
-                        commands[command[0]].ProcessOptions(messageID, command.Skip(1).ToArray());
+                        if (line.StartsWith("PING"))
+                        {
+                            streamWriter.WriteLine("PONG :tmi.twitch.tv");
+                            Console.WriteLine("Responded to PING with PONG");
+
+                        }
+                        else
+                        {
+                            string[] split = line.Split(':');
+                            string messageID = "";
+                            try
+                            {
+                                messageID = line.Split(";id=")[1].Split(";")[0];
+                            }
+                            catch { }
+
+
+                            if (split.Length > 2)
+                            {
+                                Console.WriteLine(split[2]);
+                                string[] command = split[2].Split(" ");
+
+                                if (commands.ContainsKey(command[0]))
+                                {
+                                    commands[command[0]].ProcessOptions(messageID, command.Skip(1).ToArray());
+                                }
+                            }
+                        }
                     }
                 }
+                catch (Exception e) {
+                    Console.WriteLine("ERROR:" + e);
+                    errorCount++;
+                    if(errorCount > 10)
+                    {
+                        botRunning = false;
+                        restartingBot = true;
+                    }
+                }
+            }
+            if (restartingBot)
+            {
+                StartBot();
             }
         }
 
@@ -189,10 +230,13 @@ namespace Celeste.Mod.PintaTwitchIntegration
             {
                 if (int.TryParse(args[0], out int length))
                 {
+                    if(length <= 0 || length > PintaTwitchIntModule.MAX_HAIR_LENGTH)
+                    {
+                        return;
+                    }
                     for(int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
-                        Hyperline.Hyperline.Instance.UI.SetHairLength(i, length);
-                        PintaTwitchIntModule.hair.length = length;
+                        PintaTwitchIntModule.hair.SetLength(length);
                     }
                 }
             }
@@ -212,8 +256,7 @@ namespace Celeste.Mod.PintaTwitchIntegration
                 {
                     for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
                     {
-                        Hyperline.Hyperline.Instance.UI.SetHairSpeed(i, speed);
-                        PintaTwitchIntModule.hair.speed = speed;
+                        PintaTwitchIntModule.hair.SetSpeed(speed);
                     }
                 }
             }
@@ -268,7 +311,7 @@ namespace Celeste.Mod.PintaTwitchIntegration
             this.length = length;
             for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
             {
-                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, i, length, speed);
+                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(Hyperline.Hyperline.Instance.triggerManager.GetHair(i), i, length, speed);
             }
         }
         public void SetSpeed(int speed)
@@ -276,7 +319,7 @@ namespace Celeste.Mod.PintaTwitchIntegration
             this.speed = speed;
             for (int i = 0; i < Hyperline.Hyperline.MAX_DASH_COUNT; i++)
             {
-                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(hairType, i, length, speed);
+                Hyperline.Hyperline.Instance.triggerManager.SetTrigger(Hyperline.Hyperline.Instance.triggerManager.GetHair(i), i, length, speed);
             }
         }
     }
