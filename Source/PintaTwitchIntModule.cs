@@ -65,6 +65,8 @@ namespace Celeste.Mod.PintaTwitchIntegration
         {
             typeof(CelesteTwitchIntegrationExports).ModInterop(); // TODO: delete this line if you do not need to export any functions
 
+            Everest.Events.Level.OnLoadLevel += LevelLoaded;
+
             hair = new HairProperties();
             commands.Add("help", new HelpCommand("help"));
             commands.Add("color", new ChangeHairColorCommand("color"));
@@ -109,6 +111,14 @@ namespace Celeste.Mod.PintaTwitchIntegration
         public static void SendTwitchMessage(string messageID, string message)
         {
             streamWriter.WriteLine($"@reply-parent-msg-id={messageID} PRIVMSG #{twitchChannelName} :{message}");
+        }
+
+        public static void LevelLoaded(Level level, Player.IntroTypes playerIntro, bool isFromLoader)
+        {
+            if (isFromLoader && playerIntro != Player.IntroTypes.Respawn)
+            {
+                ResetHair();
+            }
         }
 
         public async void ReadTwitchChat()
@@ -166,6 +176,11 @@ namespace Celeste.Mod.PintaTwitchIntegration
             {
                 StartBot();
             }
+        }
+
+        public static void ResetHair()
+        {
+            hair = new HairProperties();
         }
 
 
